@@ -1,0 +1,9 @@
+.modified-item:hover {
+    border-bottom: 2px solid transparent !important;
+    color: inherit !important;
+  }
+
+  .ant-menu-item-active, .ant-menu-item-selected, .ant-menu-item-selected:focus, .ant-menu-item-selected:active {
+    background-color: transparent !important;
+    border-color: transparent !important;
+  }
