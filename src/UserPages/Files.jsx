@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Button, List, message } from 'antd';
-import { UploadOutlined, DownloadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Upload, Button, List, message, Modal, Input } from 'antd';
+import { UploadOutlined, DownloadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const UploadFileList = () => {
   const [fileList, setFileList] = useState([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [currentFile, setCurrentFile] = useState(null);
+  const [newFilename, setNewFilename] = useState('');
 
   // Load the file list from local storage when the component mounts
   useEffect(() => {
@@ -56,7 +59,7 @@ const UploadFileList = () => {
   // Function to handle file download
   const handleDownload = async (file) => {
     try {
-      const response = await axios.get(`/download/${file.name}`, {
+      const response = await axios.get(`http://127.0.0.1:5000/download/${file.name}`, {
         responseType: 'blob', // Important for file downloads
       });
 
@@ -64,7 +67,7 @@ const UploadFileList = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', file.name); // or use file.name to preserve the original file name
+      link.setAttribute('download', file.name); 
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
@@ -77,25 +80,45 @@ const UploadFileList = () => {
   };
 
     // Function to handle file deletion
-    const handleDelete = async (file) => {
-      try {
-        await axios.delete(`http://127.0.0.1:5000/delete/${file.name}`);
-        message.success(`${file.name} file deleted successfully.`);
-        setFileList(prevFileList => {
-          const updatedFileList = prevFileList.filter(item => item.name !== file.name);
-          localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
-          return updatedFileList;
+  const handleDelete = async (file) => {
+    try {
+      await axios.delete(`http://127.0.0.1:5000/delete/${file.name}`);
+      message.success(`${file.name} file deleted successfully.`);
+      setFileList(prevFileList => {
+        const updatedFileList = prevFileList.filter(item => item.name !== file.name);
+        localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
+        return updatedFileList;
+      });
+    } catch (error) {
+      message.error(`Failed to delete ${file.name}: ${error.message}`);
+    }
+  };
+
+  const showRenameModal = (file) => {
+    setCurrentFile(file);
+    setNewFilename(file.name);
+    setIsModalVisible(true);
+  };
+
+  const handleRename = async () => {
+    try {
+      await axios.put(`http://127.0.0.1:5000/rename/${currentFile.name}`, { newFilename });
+      message.success(`${currentFile.name} file renamed to ${newFilename} successfully.`);
+      setFileList(prevFileList => {
+        const updatedFileList = prevFileList.map(item => {
+          if (item.name === currentFile.name) {
+            return { ...item, name: newFilename };
+          }
+          return item;
         });
-      } catch (error) {
-        message.error(`Failed to delete ${file.name}: ${error.message}`);
-      }
-    };
-  
-  // // Function to clear all files from the file list
-  // const clearFileList = () => {
-  //   setFileList([]); // Clear the file list in the state
-  //   localStorage.removeItem('uploadedFileList'); // Remove the file list from local storage
-  // };
+        localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
+        return updatedFileList;
+      });
+      setIsModalVisible(false);
+    } catch (error) {
+      message.error(`Failed to rename ${currentFile.name}: ${error.message}`);
+    }
+  };  
 
   return (
     <div>
@@ -134,12 +157,31 @@ const UploadFileList = () => {
             >
               Delete
             </Button>,
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => showRenameModal(item)}
+            >
+              Rename
+            </Button>,
+
             ]}
           >
             {item.name} {/* Display the name of each file */}
           </List.Item>
         )}
       />
+      <Modal
+        title="Rename File"
+        visible={isModalVisible}
+        onOk={handleRename}
+        onCancel={() => setIsModalVisible(false)}
+      >
+        <Input
+          value={newFilename}
+          onChange={e => setNewFilename(e.target.value)}
+        />
+      </Modal>
     </div>
   );
 };
