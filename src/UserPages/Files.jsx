@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Button, List, message } from 'antd';
-import { UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import { UploadOutlined, DownloadOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const UploadFileList = () => {
@@ -76,13 +76,26 @@ const UploadFileList = () => {
     }
   };
 
-
-
-  // Function to clear all files from the file list
-  const clearFileList = () => {
-    setFileList([]); // Clear the file list in the state
-    localStorage.removeItem('uploadedFileList'); // Remove the file list from local storage
-  };
+    // Function to handle file deletion
+    const handleDelete = async (file) => {
+      try {
+        await axios.delete(`http://127.0.0.1:5000/delete/${file.name}`);
+        message.success(`${file.name} file deleted successfully.`);
+        setFileList(prevFileList => {
+          const updatedFileList = prevFileList.filter(item => item.name !== file.name);
+          localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
+          return updatedFileList;
+        });
+      } catch (error) {
+        message.error(`Failed to delete ${file.name}: ${error.message}`);
+      }
+    };
+  
+  // // Function to clear all files from the file list
+  // const clearFileList = () => {
+  //   setFileList([]); // Clear the file list in the state
+  //   localStorage.removeItem('uploadedFileList'); // Remove the file list from local storage
+  // };
 
   return (
     <div>
@@ -97,7 +110,7 @@ const UploadFileList = () => {
         <Button type='primary' icon={<UploadOutlined />}>Upload Files</Button>
       </Upload>
 
-      <Button type='primary' danger onClick={clearFileList}>Clear Files</Button>
+      {/* <Button type='primary' danger onClick={clearFileList}>Clear Files</Button> */}
 
       <List
         header={<div>Uploaded Files</div>}
@@ -113,6 +126,14 @@ const UploadFileList = () => {
               >
                 Download
               </Button>,
+              <Button
+              type="link"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(item)}
+            >
+              Delete
+            </Button>,
             ]}
           >
             {item.name} {/* Display the name of each file */}
