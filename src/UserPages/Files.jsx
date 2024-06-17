@@ -8,6 +8,10 @@ const UploadFileList = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
   const [newFilename, setNewFilename] = useState('');
+  const [fileExtension, setFileExtension] = useState('');
+
+  const [uploadProgress, setUploadProgress] = useState({});
+
 
   // Load the file list from local storage when the component mounts
   useEffect(() => {
@@ -43,6 +47,13 @@ const UploadFileList = () => {
       await axios.post('http://127.0.0.1:5000/uploads/images', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(prevProgress => ({
+            ...prevProgress,
+            [file.uid]: percentCompleted
+          }));
         }
       });
       message.success(`${file.name} file uploaded successfully.`);
@@ -50,6 +61,10 @@ const UploadFileList = () => {
         const updatedFileList = [...prevFileList, { name: file.name }];
         localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
         return updatedFileList;
+      });
+      setUploadProgress(prevProgress => {
+        const { [file.uid]: _, ...rest } = prevProgress;
+        return rest;
       });
     } catch (error) {
       message.error(`${file.name} file upload failed.`);
@@ -96,18 +111,38 @@ const UploadFileList = () => {
 
   const showRenameModal = (file) => {
     setCurrentFile(file);
-    setNewFilename(file.name);
+    const fileParts = file.name.split('.');
+    setNewFilename(fileParts.slice(0, -1).join('.'));
+    setFileExtension(fileParts.slice(-1));
     setIsModalVisible(true);
   };
 
   const handleRename = async () => {
+    // try {
+    //   await axios.put(`http://127.0.0.1:5000/rename/${currentFile.name}`, { newFilename });
+    //   message.success(`${currentFile.name} file renamed to ${newFilename} successfully.`);
+    //   setFileList(prevFileList => {
+    //     const updatedFileList = prevFileList.map(item => {
+    //       if (item.name === currentFile.name) {
+    //         return { ...item, name: newFilename };
+    //       }
+    //       return item;
+    //     });
+    //     localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
+    //     return updatedFileList;
+    //   });
+    //   setIsModalVisible(false);
+    // } catch (error) {
+    //   message.error(`Failed to rename ${currentFile.name}: ${error.message}`);
+    // }
     try {
-      await axios.put(`http://127.0.0.1:5000/rename/${currentFile.name}`, { newFilename });
-      message.success(`${currentFile.name} file renamed to ${newFilename} successfully.`);
+      const updatedFilename = `${newFilename}.${fileExtension}`;
+      await axios.put(`http://127.0.0.1:5000/rename/${currentFile.name}`, { newFilename: updatedFilename });
+      message.success(`${currentFile.name} file renamed to ${updatedFilename} successfully.`);
       setFileList(prevFileList => {
         const updatedFileList = prevFileList.map(item => {
           if (item.name === currentFile.name) {
-            return { ...item, name: newFilename };
+            return { ...item, name: updatedFilename };
           }
           return item;
         });
@@ -118,6 +153,7 @@ const UploadFileList = () => {
     } catch (error) {
       message.error(`Failed to rename ${currentFile.name}: ${error.message}`);
     }
+
   };  
 
   return (
@@ -167,7 +203,8 @@ const UploadFileList = () => {
 
             ]}
           >
-            {item.name} {/* Display the name of each file */}
+            {item.name}
+            {uploadProgress[item.uid] && <Progress percent={uploadProgress[item.uid]} />}
           </List.Item>
         )}
       />
@@ -180,6 +217,7 @@ const UploadFileList = () => {
         <Input
           value={newFilename}
           onChange={e => setNewFilename(e.target.value)}
+          addonAfter={`.${fileExtension}`}
         />
       </Modal>
     </div>
