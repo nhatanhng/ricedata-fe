@@ -1,43 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Button, List, message, Modal, Input } from 'antd';
-import { UploadOutlined, DownloadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { Upload, Button, List, message, Modal, Input, Progress } from 'antd';
+import { UploadOutlined, DownloadOutlined, DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const UploadFileList = () => {
   const [fileList, setFileList] = useState([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [currentFile, setCurrentFile] = useState(null);
+  const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);  const [currentFile, setCurrentFile] = useState(null);
   const [newFilename, setNewFilename] = useState('');
   const [fileExtension, setFileExtension] = useState('');
-
   const [uploadProgress, setUploadProgress] = useState({});
+  const [imageSrc, setImageSrc] = useState('');
 
 
-  // Load the file list from local storage when the component mounts
   useEffect(() => {
     const storedFileList = localStorage.getItem('uploadedFileList');
     if (storedFileList) {
-      setFileList(JSON.parse(storedFileList)); // Parse the JSON string to an array
+      setFileList(JSON.parse(storedFileList));
     }
   }, []);
-
-  // // Function to handle file upload changes
-  // const handleUpload = ({ file, fileList }) => {
-  //   if (file.status === 'done') {
-  //     message.success(`${file.name} file uploaded successfully.`);
-  //     const newFiles = fileList.slice(-1); // Get the last uploaded file
-  //     const updatedFileList = [...fileList]; // Create a copy of the current file list
-  //     // Update the state with the new file list
-  //     setFileList(prevFileList => {
-  //       const mergedFileList = [...prevFileList, ...newFiles];
-  //       // Save the updated file list to local storage
-  //       localStorage.setItem('uploadedFileList', JSON.stringify(mergedFileList));
-  //       return mergedFileList;
-  //     });
-  //   } else if (file.status === 'error') {
-  //     message.error(`${file.name} file upload failed.`);
-  //   }
-  // };
 
   const handleUpload = async ({ file }) => {
     const formData = new FormData();
@@ -58,7 +39,7 @@ const UploadFileList = () => {
       });
       message.success(`${file.name} file uploaded successfully.`);
       setFileList(prevFileList => {
-        const updatedFileList = [...prevFileList, { name: file.name }];
+        const updatedFileList = [...prevFileList, { name: file.name, uid: file.uid }];
         localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
         return updatedFileList;
       });
@@ -71,18 +52,15 @@ const UploadFileList = () => {
     }
   };
 
-  // Function to handle file download
   const handleDownload = async (file) => {
     try {
       const response = await axios.get(`http://127.0.0.1:5000/download/${file.name}`, {
-        responseType: 'blob', // Important for file downloads
+        responseType: 'blob',
       });
-
-      // Create a link element, set its href to the object URL, and click it to download the file
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', file.name); 
+      link.setAttribute('download', file.name);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
@@ -94,7 +72,6 @@ const UploadFileList = () => {
     }
   };
 
-    // Function to handle file deletion
   const handleDelete = async (file) => {
     try {
       await axios.delete(`http://127.0.0.1:5000/delete/${file.name}`);
@@ -114,27 +91,10 @@ const UploadFileList = () => {
     const fileParts = file.name.split('.');
     setNewFilename(fileParts.slice(0, -1).join('.'));
     setFileExtension(fileParts.slice(-1));
-    setIsModalVisible(true);
+    setIsRenameModalVisible(true);
   };
 
   const handleRename = async () => {
-    // try {
-    //   await axios.put(`http://127.0.0.1:5000/rename/${currentFile.name}`, { newFilename });
-    //   message.success(`${currentFile.name} file renamed to ${newFilename} successfully.`);
-    //   setFileList(prevFileList => {
-    //     const updatedFileList = prevFileList.map(item => {
-    //       if (item.name === currentFile.name) {
-    //         return { ...item, name: newFilename };
-    //       }
-    //       return item;
-    //     });
-    //     localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
-    //     return updatedFileList;
-    //   });
-    //   setIsModalVisible(false);
-    // } catch (error) {
-    //   message.error(`Failed to rename ${currentFile.name}: ${error.message}`);
-    // }
     try {
       const updatedFilename = `${newFilename}.${fileExtension}`;
       await axios.put(`http://127.0.0.1:5000/rename/${currentFile.name}`, { newFilename: updatedFilename });
@@ -149,32 +109,46 @@ const UploadFileList = () => {
         localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
         return updatedFileList;
       });
-      setIsModalVisible(false);
+      setIsRenameModalVisible(false);
     } catch (error) {
       message.error(`Failed to rename ${currentFile.name}: ${error.message}`);
     }
+  };
 
-  };  
+  // const clearFileList = () => {
+  //   setFileList([]);
+  //   localStorage.removeItem('uploadedFileList');
+  // };
+
+  const handleView = async (file) => {
+    try {
+      const response = await axios.get(`http://127.0.0.1:5000/hyperspectral/${file.name}`, {
+        responseType: 'blob',
+      });
+      const imageUrl = window.URL.createObjectURL(new Blob([response.data]));
+      setImageSrc(imageUrl);
+      setIsViewModalVisible(true);
+    } catch (error) {
+      message.error(`Failed to view ${file.name}: ${error.message}`);
+    }
+  };
 
   return (
     <div>
       <Upload
         customRequest={handleUpload}
-
-        // action="http://127.0.0.1:5000/uploads/images" // URL to which the files will be uploaded
-        // onChange={handleUpload} // Function to handle upload changes
-        multiple // Allow multiple file uploads
-        showUploadList={false} // Hide the default upload list
+        multiple
+        showUploadList={false}
       >
         <Button type='primary' icon={<UploadOutlined />}>Upload Files</Button>
       </Upload>
 
-      {/* <Button type='primary' danger onClick={clearFileList}>Clear Files</Button> */}
+      {/* <Button type='primary' danger onClick={clearFileList}>Clear localStorage</Button> */}
 
       <List
-        header={<div>Uploaded Files</div>}
+        header={<div>Files (season 2 trip 2)</div>}
         bordered
-        dataSource={fileList} // Use the state as the data source for the list
+        dataSource={fileList}
         renderItem={item => (
           <List.Item
             actions={[
@@ -186,33 +160,51 @@ const UploadFileList = () => {
                 Download
               </Button>,
               <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(item)}
-            >
-              Delete
-            </Button>,
-            <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => showRenameModal(item)}
-            >
-              Rename
-            </Button>,
-
+                type="link"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleDelete(item)}
+              >
+                Delete
+              </Button>,
+              <Button
+                type="link"
+                icon={<EditOutlined />}
+                onClick={() => showRenameModal(item)}
+              >
+                Rename
+              </Button>,
+              item.name.endsWith('.img') && (
+                <Button
+                  type="link"
+                  icon={<EyeOutlined />}
+                  onClick={() => handleView(item)}
+                >
+                  View
+                </Button>
+              ),
             ]}
           >
             {item.name}
-            {uploadProgress[item.uid] && <Progress percent={uploadProgress[item.uid]} />}
+            {uploadProgress[item.uid] !== undefined && (
+              <Progress percent={uploadProgress[item.uid]} />
+            )}
           </List.Item>
         )}
       />
       <Modal
+        title="View Hyperspectral Image"
+        visible={isViewModalVisible}
+        onCancel={() => setIsViewModalVisible(false)}
+        footer={null}
+      >
+        <img src={imageSrc} alt="Hyperspectral Visualization" style={{ width: '100%' }} />
+      </Modal>
+      <Modal
         title="Rename File"
-        visible={isModalVisible}
+        visible={isRenameModalVisible}
         onOk={handleRename}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => setIsRenameModalVisible(false)}
       >
         <Input
           value={newFilename}
