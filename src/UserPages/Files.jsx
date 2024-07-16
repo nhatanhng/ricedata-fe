@@ -3,7 +3,7 @@ import { Upload, Button, List, message, Modal, Input, Progress } from 'antd';
 import { UploadOutlined, DownloadOutlined, DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
-const UploadFileList = () => {
+const Files = () => {
   const [fileList, setFileList] = useState([]);
   const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);  const [currentFile, setCurrentFile] = useState(null);
@@ -25,17 +25,10 @@ const UploadFileList = () => {
     formData.append('file', file);
 
     try {
-      await axios.post('http://127.0.0.1:5000/uploads/images', formData, {
+      await axios.post('http://127.0.0.1:5000/uploads/files', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(prevProgress => ({
-            ...prevProgress,
-            [file.uid]: percentCompleted
-          }));
-        }
       });
       message.success(`${file.name} file uploaded successfully.`);
       setFileList(prevFileList => {
@@ -186,19 +179,16 @@ const UploadFileList = () => {
             ]}
           >
             {item.name}
-            {uploadProgress[item.uid] !== undefined && (
-              <Progress percent={uploadProgress[item.uid]} />
-            )}
           </List.Item>
         )}
       />
       <Modal
-        title="View Hyperspectral Image"
+        title="View Image"
         visible={isViewModalVisible}
         onCancel={() => setIsViewModalVisible(false)}
         footer={null}
       >
-        <img src={imageSrc} alt="Hyperspectral Visualization" style={{ width: '100%' }} />
+        <img src={imageSrc} alt="Hyperspectral/Multispectral Visualization" style={{ width: '100%' }} />
       </Modal>
       <Modal
         title="Rename File"
@@ -216,4 +206,4 @@ const UploadFileList = () => {
   );
 };
 
-export default UploadFileList;
+export default Files;
