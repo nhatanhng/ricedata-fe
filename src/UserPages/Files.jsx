@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Button, List, message, Modal, Input, Progress } from 'antd';
+import { Button, List, message, Modal, Input } from 'antd';
 import { UploadOutlined, DownloadOutlined, DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const Files = () => {
   const [fileList, setFileList] = useState([]);
   const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
-  const [isViewModalVisible, setIsViewModalVisible] = useState(false);  const [currentFile, setCurrentFile] = useState(null);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
+  const [currentFile, setCurrentFile] = useState(null);
   const [newFilename, setNewFilename] = useState('');
   const [fileExtension, setFileExtension] = useState('');
-  const [uploadProgress, setUploadProgress] = useState({});
   const [imageSrc, setImageSrc] = useState('');
-
+  const [hdrFile, setHdrFile] = useState(null);
+  const [imgFile, setImgFile] = useState(null);
+  const [tifFile, setTifFile] = useState(null);
 
   useEffect(() => {
     const storedFileList = localStorage.getItem('uploadedFileList');
@@ -20,9 +23,16 @@ const Files = () => {
     }
   }, []);
 
-  const handleUpload = async ({ file }) => {
+  const handleUpload = async () => {
+    // if (!hdrFile || !imgFile) {
+    //   message.error('.img and .hdr files must be uploaded together!');
+    //   return;
+    // }
+
     const formData = new FormData();
-    formData.append('file', file);
+    if (hdrFile) formData.append('file', hdrFile);
+    if (imgFile) formData.append('file', imgFile);
+    if (tifFile) formData.append('file', tifFile);
 
     try {
       await axios.post('http://127.0.0.1:5000/uploads/files', formData, {
@@ -30,18 +40,23 @@ const Files = () => {
           'Content-Type': 'multipart/form-data'
         },
       });
-      message.success(`${file.name} file uploaded successfully.`);
+      message.success('Files uploaded successfully.');
       setFileList(prevFileList => {
-        const updatedFileList = [...prevFileList, { name: file.name, uid: file.uid }];
+        const updatedFileList = [
+          ...prevFileList,
+          hdrFile ? { name: hdrFile.name, uid: hdrFile.uid } : null,
+          imgFile ? { name: imgFile.name, uid: imgFile.uid } : null,
+          tifFile ? { name: tifFile.name, uid: tifFile.uid } : null,
+        ].filter(file => file !== null);
         localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
         return updatedFileList;
       });
-      setUploadProgress(prevProgress => {
-        const { [file.uid]: _, ...rest } = prevProgress;
-        return rest;
-      });
+      setIsUploadModalVisible(false);
+      setHdrFile(null);
+      setImgFile(null);
+      setTifFile(null);
     } catch (error) {
-      message.error(`${file.name} file upload failed.`);
+      message.error('File upload failed.');
     }
   };
 
@@ -108,11 +123,6 @@ const Files = () => {
     }
   };
 
-  // const clearFileList = () => {
-  //   setFileList([]);
-  //   localStorage.removeItem('uploadedFileList');
-  // };
-
   const handleView = async (file) => {
     try {
       const response = await axios.get(`http://127.0.0.1:5000/hyperspectral/${file.name}`, {
@@ -128,15 +138,7 @@ const Files = () => {
 
   return (
     <div>
-      <Upload
-        customRequest={handleUpload}
-        multiple
-        showUploadList={false}
-      >
-        <Button type='primary' icon={<UploadOutlined />}>Upload Files</Button>
-      </Upload>
-
-      {/* <Button type='primary' danger onClick={clearFileList}>Clear localStorage</Button> */}
+      <Button type='primary' icon={<UploadOutlined />} onClick={() => setIsUploadModalVisible(true)}>Upload Files</Button>
 
       <List
         header={<div>Files (season 2 trip 2)</div>}
@@ -201,6 +203,37 @@ const Files = () => {
           onChange={e => setNewFilename(e.target.value)}
           addonAfter={`.${fileExtension}`}
         />
+      </Modal>
+      <Modal
+        title="Upload Files"
+        visible={isUploadModalVisible}
+        onOk={handleUpload}
+        onCancel={() => setIsUploadModalVisible(false)}
+      >
+        <div>
+        <p>Note: If you want to use .hdr and .img for visualizing hyperspectral image,
+             make sure the .img is uploaded before .hdr and both files must have the same filename  .</p>
+            <br></br>
+        <p>Choose .hdr file </p>
+          <Input
+            type="file"
+            accept=".hdr"
+            title='Choose .hdr file'
+            onChange={e => setHdrFile(e.target.files[0])}
+          />
+        <p>Choose .img file </p>
+          <Input
+            type="file"
+            accept=".img"
+            onChange={e => setImgFile(e.target.files[0])}
+          />
+        <p>Choose .tif file </p>
+          <Input
+            type="file"
+            accept=".tif"
+            onChange={e => setTifFile(e.target.files[0])}
+          />
+        </div>
       </Modal>
     </div>
   );
