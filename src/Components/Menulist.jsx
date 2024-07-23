@@ -25,13 +25,13 @@ const Menulist = ({ darkTheme }) =>{
                 <Menu.Item className="ant-menu-item" key="images" icon={<FileImageOutlined/>}> Images </Menu.Item>    
             </Link>
 
-            <Link to ="/users/statistics">
+            {/* <Link to ="/users/statistics">
                 <Menu.Item className="ant-menu-item" key="statistics" icon={<BarChartOutlined/>}> Statistics </Menu.Item>
             </Link>
 
             <Link to ="/users/about">
                 <Menu.Item className="ant-menu-item" key="about" icon={<InfoCircleOutlined/>}> About  </Menu.Item>
-            </Link>
+            </Link> */}
 
             <Link to="/">
                 <Menu.Item className="ant-menu-item" key="logout" icon={<LogoutOutlined style={{color: "red"}}/>} color="red">
