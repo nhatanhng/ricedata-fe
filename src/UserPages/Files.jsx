@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Button, List, message, Modal, Input } from 'antd';
+import { Button, List, message, Modal, Input, Form } from 'antd';
 import { UploadOutlined, DownloadOutlined, DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const Files = () => {
   const [fileList, setFileList] = useState([]);
   const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
-  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [isInputRGBModalVisible, setIsInputRGBModalVisible] = useState(false);
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
+  const [isImagePreviewModalVisible, setIsImagePreviewModalVisible] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
   const [newFilename, setNewFilename] = useState('');
   const [fileExtension, setFileExtension] = useState('');
@@ -15,6 +16,10 @@ const Files = () => {
   const [hdrFile, setHdrFile] = useState(null);
   const [imgFile, setImgFile] = useState(null);
   const [tifFile, setTifFile] = useState(null);
+  const [rValue, setRValue] = useState(0);
+  const [gValue, setGValue] = useState(0);
+  const [bValue, setBValue] = useState(0);
+  const [nfValue, setNfValue] = useState(0);
 
   useEffect(() => {
     const storedFileList = localStorage.getItem('uploadedFileList');
@@ -124,17 +129,61 @@ const Files = () => {
   };
 
   const handleView = async (file) => {
+    setCurrentFile(file);
+    setImageSrc('');
     try {
-      const response = await axios.get(`http://127.0.0.1:5000/hyperspectral/${file.name}`, {
-        responseType: 'blob',
+      const response = await axios.get(`http://127.0.0.1:5000/recommend_channel/${file.name}`);
+      const { R, G, B } = response.data;
+      setRValue(R);
+      setGValue(G);
+      setBValue(B);
+      setIsInputRGBModalVisible(true);
+    } catch (error) {
+      message.error(`Failed to fetch RGB values for ${file.name}: ${error.message}`);
+    }
+  };
+
+  // const handleView = (file) => {
+  //   setCurrentFile(file);
+  //   setImageSrc('');
+  //   setIsInputRGBModalVisible(true);
+  // };
+
+
+  const handleRGBSubmit = async () => {
+    if (rValue < 0 || rValue > 255 || gValue < 0 || gValue > 255 || bValue < 0 || bValue > 255) {
+      message.error('RGB values must be between 0 and 255.');
+      return;
+    }
+    try {
+      const response = await axios.post('http://127.0.0.1:5000/hyperspectral', {
+        filename: currentFile.name,
+        R: rValue,
+        G: gValue,
+        B: bValue,
+        // nf: nfValue,
+      }, {
+        responseType: 'blob'
       });
       const imageUrl = window.URL.createObjectURL(new Blob([response.data]));
       setImageSrc(imageUrl);
-      setIsViewModalVisible(true);
+      setIsInputRGBModalVisible(false); // Close the RGB input modal
+      setIsImagePreviewModalVisible(true); // Open the image preview modal
+      message.success('Visualization updated successfully.');
     } catch (error) {
-      message.error(`Failed to view ${file.name}: ${error.message}`);
+      message.error(`Failed to visualize ${currentFile.name}: ${error.message}`);
     }
   };
+
+
+  // const deleteFileNameFromLocalStorage = (file) => {
+  //   setFileList(prevFileList => {
+  //     const updatedFileList = prevFileList.filter(item => item.name !== file.name);
+  //     localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
+  //     return updatedFileList;
+  //   });
+  // };
+
 
   return (
     <div>
@@ -169,7 +218,15 @@ const Files = () => {
               >
                 Rename
               </Button>,
-              item.name.endsWith('.img') && (
+            //   <Button
+            //   type="link"
+            //   danger
+            //   icon={<DeleteOutlined />}
+            //   onClick={() => deleteFileNameFromLocalStorage(item)}
+            // >
+            //   Delete item in localstorage
+            // </Button>,
+              item.name.endsWith('.hdr') && (
                 <Button
                   type="link"
                   icon={<EyeOutlined />}
@@ -185,13 +242,49 @@ const Files = () => {
         )}
       />
       <Modal
-        title="View Image"
-        visible={isViewModalVisible}
-        onCancel={() => setIsViewModalVisible(false)}
-        footer={null}
+        title="Input RGB"
+        visible={isInputRGBModalVisible}
+        onCancel={() => setIsInputRGBModalVisible(false)}
+        footer={[
+          <Button key="fetch" type="default" onClick={() => handleView(currentFile)}>
+            Fetch RGB Values
+          </Button>,
+          <Button key="submit" type="primary" onClick={handleRGBSubmit}>
+            Confirm
+          </Button>,
+        ]}
       >
-        <img src={imageSrc} alt="Hyperspectral/Multispectral Visualization" style={{ width: '100%' }} />
+        <Form>
+          <Form.Item label="R">
+            <Input type="number" value={rValue} onChange={e => setRValue(Number(e.target.value))} min={0} max={255} />
+          </Form.Item>
+          <Form.Item label="G">
+            <Input type="number" value={gValue} onChange={e => setGValue(Number(e.target.value))} min={0} max={255} />
+          </Form.Item>
+          <Form.Item label="B">
+            <Input type="number" value={bValue} onChange={e => setBValue(Number(e.target.value))} min={0} max={255} />
+          </Form.Item>
+          {/* <Form.Item label="nf">
+            <Input type="number" value={nfValue} onChange={e => setNfValue(Number(e.target.value))} min={0} max={255} />
+          </Form.Item> */}
+        </Form>
       </Modal>
+
+      <Modal
+        title="Image Preview"
+        visible={isImagePreviewModalVisible}
+        onCancel={() => setIsImagePreviewModalVisible(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsImagePreviewModalVisible(false)}>
+            Close
+          </Button>
+        ]}
+      >
+        {imageSrc && (
+          <img src={imageSrc} alt="Hyperspectral/Multispectral Visualization" style={{ width: '100%', marginTop: '20px' }} />
+        )}
+      </Modal>
+
       <Modal
         title="Rename File"
         visible={isRenameModalVisible}
@@ -211,8 +304,7 @@ const Files = () => {
         onCancel={() => setIsUploadModalVisible(false)}
       >
         <div>
-        <p>Note: If you want to use .hdr and .img for visualizing hyperspectral image,
-             make sure the .img is uploaded before .hdr and both files must have the same filename  .</p>
+        <p>Note: Please make sure .img is uploaded before .hdr and both files must have the same filename.</p>
             <br></br>
         <p>Choose .hdr file </p>
           <Input
