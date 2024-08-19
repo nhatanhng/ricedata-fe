@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Dropdown, Space, Button, message, Modal } from 'antd';
-import { FileImageOutlined } from '@ant-design/icons';
+import { Dropdown, Space, Button, message, Modal, Upload } from 'antd';
+import { FileImageOutlined, UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const Images = () => {
@@ -88,6 +88,20 @@ const Images = () => {
       });
   };
 
+  const handleCsvUpload = ({ file }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('image_id', selectedFilename); // Attach the selected image ID
+
+    axios.post('http://127.0.0.1:5000/upload_csv', formData)
+      .then(() => {
+        message.success('File uploaded and data merged successfully');
+      })
+      .catch(error => {
+        message.error('Failed to upload file');
+      });
+  };
+
   return (
     <div>
       <Dropdown menu={{ items }} trigger={['click']}>
@@ -106,7 +120,7 @@ const Images = () => {
             style={{ maxWidth: '100%', cursor: isEditMode ? 'crosshair' : 'default' }} 
             onClick={handleImageClick} 
           />
-          {points.map((point) => (
+          {/* {points.map((point) => (
             <div 
               key={point.id} 
               style={{
@@ -122,10 +136,23 @@ const Images = () => {
               }} 
               onClick={() => handlePointClick(point)}
             />
-          ))}
+          ))} */}
         </div>
       )}
-      <Button onClick={toggleEditMode} style={{ marginTop: 10 }}>
+      <Upload
+        customRequest={handleCsvUpload}
+        showUploadList={false}
+        disabled={!selectedFilename}  // Disable if no image is selected
+      >
+        <Button
+          icon={<UploadOutlined />}
+          style={{ marginTop: 10 }}
+          disabled={!selectedFilename}  // Disable if no image is selected
+        >
+          Upload CSV
+        </Button>
+      </Upload>
+      {/* <Button onClick={toggleEditMode} style={{ marginTop: 10 }}>
         {isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
       </Button>
       <Modal
@@ -137,7 +164,7 @@ const Images = () => {
         cancelText="Cancel"
       >
         <p>Do you want to delete this point?</p>
-      </Modal>
+      </Modal> */}
     </div>
   );
 }
