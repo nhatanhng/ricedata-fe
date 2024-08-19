@@ -7,6 +7,8 @@ const Files = () => {
   const [fileList, setFileList] = useState([]);
   const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
   const [isInputRGBModalVisible, setIsInputRGBModalVisible] = useState(false);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState(null);
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
   const [isImagePreviewModalVisible, setIsImagePreviewModalVisible] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
@@ -85,18 +87,25 @@ const Files = () => {
     }
   };
 
+  const showDeleteModal = (file) => {
+    setFileToDelete(file);
+    setIsDeleteModalVisible(true);
+  };
+
   const handleDelete = async (file) => {
     try {
-      await axios.delete(`http://127.0.0.1:5000/delete/${file.name}`);
-      message.success(`${file.name} file deleted successfully.`);
+      await axios.delete(`http://127.0.0.1:5000/delete/${fileToDelete.name}`);
+      message.success(`${fileToDelete.name} file deleted successfully.`);
       setFileList(prevFileList => {
-        const updatedFileList = prevFileList.filter(item => item.name !== file.name);
+        const updatedFileList = prevFileList.filter(item => item.name !== fileToDelete.name);
         localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
         return updatedFileList;
       });
     } catch (error) {
-      message.error(`Failed to delete ${file.name}: ${error.message}`);
+      message.error(`Failed to delete ${fileToDelete.name}: ${error.message}`);
     }
+    setIsDeleteModalVisible(false);
+    setFileToDelete(null);
   };
 
   const showRenameModal = (file) => {
@@ -142,13 +151,6 @@ const Files = () => {
       message.error(`Failed to fetch RGB values for ${file.name}: ${error.message}`);
     }
   };
-
-  // const handleView = (file) => {
-  //   setCurrentFile(file);
-  //   setImageSrc('');
-  //   setIsInputRGBModalVisible(true);
-  // };
-
 
   const handleRGBSubmit = async () => {
     if (rValue < 0 || rValue > 255 || gValue < 0 || gValue > 255 || bValue < 0 || bValue > 255) {
@@ -207,7 +209,7 @@ const Files = () => {
                 type="link"
                 danger
                 icon={<DeleteOutlined />}
-                onClick={() => handleDelete(item)}
+                onClick={() =>  showDeleteModal(item)}
               >
                 Delete
               </Button>,
@@ -281,7 +283,7 @@ const Files = () => {
         ]}
       >
         {imageSrc && (
-          <img src={imageSrc} alt="Hyperspectral/Multispectral Visualization" style={{ width: '100%', marginTop: '20px' }} />
+          <img src={imageSrc} alt="Hyperspectral Visualization" style={{ width: '100%', marginTop: '20px' }} />
         )}
       </Modal>
 
@@ -306,18 +308,18 @@ const Files = () => {
         <div>
         <p>Note: Please make sure .img is uploaded before .hdr and both files must have the same filename.</p>
             <br></br>
+        <p>Choose .img file </p>
+          <Input
+            type="file"
+            accept=".img"
+            onChange={e => setImgFile(e.target.files[0])}
+          />
         <p>Choose .hdr file </p>
           <Input
             type="file"
             accept=".hdr"
             title='Choose .hdr file'
             onChange={e => setHdrFile(e.target.files[0])}
-          />
-        <p>Choose .img file </p>
-          <Input
-            type="file"
-            accept=".img"
-            onChange={e => setImgFile(e.target.files[0])}
           />
         <p>Choose .tif file </p>
           <Input
@@ -327,6 +329,15 @@ const Files = () => {
           />
         </div>
       </Modal>
+      <Modal
+        title="Confirm Delete"
+        visible={isDeleteModalVisible}
+        onOk={handleDelete}
+        onCancel={() => setIsDeleteModalVisible(false)}
+      >
+        <p>Are you sure you want to delete {fileToDelete ? fileToDelete.name : ''}?</p>
+      </Modal>
+
     </div>
   );
 };
