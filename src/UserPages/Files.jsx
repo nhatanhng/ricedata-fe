@@ -22,6 +22,8 @@ const Files = () => {
   const [gValue, setGValue] = useState(0);
   const [bValue, setBValue] = useState(0);
   const [nfValue, setNfValue] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isRGBSubmitting, setIsRGBSubmitting] = useState(false);
 
   useEffect(() => {
     const storedFileList = localStorage.getItem('uploadedFileList');
@@ -31,16 +33,12 @@ const Files = () => {
   }, []);
 
   const handleUpload = async () => {
-    // if (!hdrFile || !imgFile) {
-    //   message.error('.img and .hdr files must be uploaded together!');
-    //   return;
-    // }
-
+    setIsUploading(true); 
     const formData = new FormData();
     if (hdrFile) formData.append('file', hdrFile);
     if (imgFile) formData.append('file', imgFile);
     if (tifFile) formData.append('file', tifFile);
-
+  
     try {
       await axios.post('http://127.0.0.1:5000/uploads/files', formData, {
         headers: {
@@ -65,7 +63,9 @@ const Files = () => {
     } catch (error) {
       message.error('File upload failed.');
     }
+    setIsUploading(false); // End loading
   };
+  
 
   const handleDownload = async (file) => {
     try {
@@ -153,8 +153,10 @@ const Files = () => {
   };
 
   const handleRGBSubmit = async () => {
+    setIsRGBSubmitting(true); 
     if (rValue < 0 || rValue > 255 || gValue < 0 || gValue > 255 || bValue < 0 || bValue > 255) {
       message.error('RGB values must be between 0 and 255.');
+      setIsRGBSubmitting(false); 
       return;
     }
     try {
@@ -163,19 +165,20 @@ const Files = () => {
         R: rValue,
         G: gValue,
         B: bValue,
-        // nf: nfValue,
       }, {
         responseType: 'blob'
       });
       const imageUrl = window.URL.createObjectURL(new Blob([response.data]));
       setImageSrc(imageUrl);
-      setIsInputRGBModalVisible(false); // Close the RGB input modal
-      setIsImagePreviewModalVisible(true); // Open the image preview modal
+      setIsInputRGBModalVisible(false); 
+      setIsImagePreviewModalVisible(true); 
       message.success('Visualization updated successfully.');
     } catch (error) {
       message.error(`Failed to visualize ${currentFile.name}: ${error.message}`);
     }
+    setIsRGBSubmitting(false); 
   };
+  
 
 
   // const deleteFileNameFromLocalStorage = (file) => {
@@ -189,10 +192,14 @@ const Files = () => {
 
   return (
     <div>
-      <Button type='primary' icon={<UploadOutlined />} onClick={() => setIsUploadModalVisible(true)}>Upload Files</Button>
+      <Button 
+      type='primary' 
+      icon={<UploadOutlined />} 
+      onClick={() => setIsUploadModalVisible(true)}>
+        Upload Files</Button>
 
       <List
-        header={<div>Files (season 2 trip 2)</div>}
+        header={<div><strong>Files Uploaded</strong></div>}
         bordered
         dataSource={fileList}
         renderItem={item => (
@@ -217,6 +224,7 @@ const Files = () => {
                 type="link"
                 icon={<EditOutlined />}
                 onClick={() => showRenameModal(item)}
+                
               >
                 Rename
               </Button>,
@@ -248,10 +256,15 @@ const Files = () => {
         visible={isInputRGBModalVisible}
         onCancel={() => setIsInputRGBModalVisible(false)}
         footer={[
-          <Button key="fetch" type="default" onClick={() => handleView(currentFile)}>
-            Fetch RGB Values
+          <Button key="fetch" type="default" 
+          onClick={() => handleView(currentFile)}
+          disabled={isRGBSubmitting} 
+>
+            Fetch Recommend Values
           </Button>,
-          <Button key="submit" type="primary" onClick={handleRGBSubmit}>
+          <Button key="submit"
+           type="primary" onClick={handleRGBSubmit}
+           loading={isRGBSubmitting}>
             Confirm
           </Button>,
         ]}
@@ -300,11 +313,21 @@ const Files = () => {
         />
       </Modal>
       <Modal
-        title="Upload Files"
-        visible={isUploadModalVisible}
-        onOk={handleUpload}
-        onCancel={() => setIsUploadModalVisible(false)}
-      >
+      title="Upload Files"
+      visible={isUploadModalVisible}
+      onOk={handleUpload}
+      onCancel={() => !isUploading && setIsUploadModalVisible(false)} // Disable cancel when uploading
+      footer={[
+        <Button key="back" 
+        onClick={() => setIsUploadModalVisible(false)} 
+        disabled={isUploading}>
+          Cancel
+        </Button>,
+        <Button key="submit" type="primary" onClick={handleUpload} loading={isUploading}>
+          {isUploading ? 'Uploading...' : 'Upload'}
+        </Button>,
+      ]}
+    >
         <div>
         <p>Note: Please make sure .img is uploaded before .hdr and both files must have the same filename.</p>
             <br></br>
