@@ -4,12 +4,10 @@ import UserLayout from './Layouts/UserLayout'
 
 const HomePage = React.lazy(() => import('./Home'))
 const FilesPage = React.lazy(() => import('./UserPages/Files'))
-const ImagesPage = React.lazy(() => import('./UserPages/Images'))
+// const ImagesPage = React.lazy(() => import('./UserPages/Images'))
+const ImagesPage = React.lazy(() => import('./UserPages/ImagesTest'))
 const StatisticsPage = React.lazy(() => import('./UserPages/Statistics'))
 const AboutPage = React.lazy(() => import('./UserPages/About'))
-
-
-
 
 const loading = () => <div className="" />
 
