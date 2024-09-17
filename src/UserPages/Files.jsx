@@ -33,26 +33,38 @@ const Files = () => {
   }, []);
 
   const handleUpload = async () => {
-    setIsUploading(true); 
+    setIsUploading(true);
     const formData = new FormData();
     if (hdrFile) formData.append('file', hdrFile);
     if (imgFile) formData.append('file', imgFile);
     if (tifFile) formData.append('file', tifFile);
   
     try {
+      // Check if the file already exists
+      const fileCheckResponse = await axios.post('http://127.0.0.1:5000/check-file', {
+        filenames: [hdrFile?.name, imgFile?.name, tifFile?.name].filter(Boolean),
+      });
+  
+      if (fileCheckResponse.data.exists) {
+        message.error(`File(s) ${fileCheckResponse.data.existsFiles.join(', ')} already exist.`);
+        setIsUploading(false);
+        return;
+      }
+  
+      // Proceed with the upload if no existing file is found
       await axios.post('http://127.0.0.1:5000/uploads/files', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
         },
       });
       message.success('Files uploaded successfully.');
-      setFileList(prevFileList => {
+      setFileList((prevFileList) => {
         const updatedFileList = [
           ...prevFileList,
           hdrFile ? { name: hdrFile.name, uid: hdrFile.uid } : null,
           imgFile ? { name: imgFile.name, uid: imgFile.uid } : null,
           tifFile ? { name: tifFile.name, uid: tifFile.uid } : null,
-        ].filter(file => file !== null);
+        ].filter((file) => file !== null);
         localStorage.setItem('uploadedFileList', JSON.stringify(updatedFileList));
         return updatedFileList;
       });
@@ -63,8 +75,9 @@ const Files = () => {
     } catch (error) {
       message.error('File upload failed.');
     }
-    setIsUploading(false); // End loading
+    setIsUploading(false);
   };
+  
   
 
   const handleDownload = async (file) => {
