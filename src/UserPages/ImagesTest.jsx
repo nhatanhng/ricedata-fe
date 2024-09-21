@@ -51,18 +51,15 @@ const Images = () => {
       })
       .catch(error => {
         message.error('Unable to fetch points');
-        console.log("Failed to fetch points", error);
         setIsDataUploaded(false);
       });
   };
-  
 
   const handleImageClick = (e) => {
     if (isEditMode && selectedImage) {
       const rect = e.target.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-
       setSelectedPoint({ x, y });
       setIsModalVisible(true);
     }
@@ -79,41 +76,37 @@ const Images = () => {
     .catch(error => {
       message.error('Failed to fetch statistical data');
     });
-
     setSelectedPoint(point);
   };
 
   const handleModalClose = () => {
     setIsModalVisible(false);
     setStatisticalData(null);
+    setProcessedImage(null); // Clear the processed image on modal close
+  };
+
+  const handleImageLoad = (e) => {
+    const { width, height } = e.target.getBoundingClientRect();
+    setDisplaySize({ width, height });
   };
 
   const handleCsvUpload = ({ file }) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('image_id', selectedFilename); // Attach the selected image ID
-    formData.append('display_width', displaySize.width);  // Attach display width
-    formData.append('display_height', displaySize.height); // Attach display height
-  
+    formData.append('image_id', selectedFilename); 
+    formData.append('display_width', displaySize.width);  
+    formData.append('display_height', displaySize.height);
+
     axios.post('http://127.0.0.1:5000/upload_csv', formData)
       .then(() => {
         message.success('File uploaded and data merged successfully');
-        console.log("CSV uploaded successfully");
-        fetchPoints(selectedFilename.replace('.img', '')); // Refresh points after upload
-        setIsDataUploaded(true); // Set flag to true after successful upload
-        console.log("Data uploaded, isDataUploaded state set to true");
+        fetchPoints(selectedFilename.replace('.img', ''));
+        setIsDataUploaded(true); 
       })
       .catch(error => {
         message.error('Failed to upload file');
-        setIsDataUploaded(false); // Reset flag on failure
-        console.log("Failed to upload CSV", error);
+        setIsDataUploaded(false);
       });
-  };
-  
-
-  const handleImageLoad = (e) => {
-    const { width, height } = e.target.getBoundingClientRect();
-    setDisplaySize({ width, height });
   };
 
   const handleDeleteData = () => {
@@ -122,10 +115,8 @@ const Images = () => {
     })
     .then(() => {
       message.success('Data deleted successfully');
-      setPoints([]); // Clear the points after deletion
-      // setSelectedImage(null); 
-      // setSelectedFilename('');
-      setIsDataUploaded(false); // Reset the flag after deletion
+      setPoints([]);
+      setIsDataUploaded(false);
     })
     .catch(error => {
       message.error('Failed to delete data');
@@ -163,7 +154,7 @@ const Images = () => {
       <Upload
         customRequest={handleCsvUpload}
         showUploadList={false}
-        disabled={!selectedFilename} 
+        disabled={!selectedFilename}
       >
         <Button
           icon={<UploadOutlined />}
