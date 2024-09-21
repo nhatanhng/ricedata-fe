@@ -13,7 +13,8 @@ const Images = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [statisticalData, setStatisticalData] = useState(null);
   const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
-  const [isDataUploaded, setIsDataUploaded] = useState(false); // New state to track CSV upload success
+  const [isDataUploaded, setIsDataUploaded] = useState(false);
+  const [processedImage, setProcessedImage] = useState(null); // To store the processed image
 
   useEffect(() => {
     axios.get('http://127.0.0.1:5000/visualized_files')
@@ -123,6 +124,31 @@ const Images = () => {
     });
   };
 
+  // Function to handle file upload for ASD or SED files
+  const handleSpectralDataUpload = ({ file }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('point_id', selectedPoint?.id); // Send point ID for reference
+
+    axios.post('http://127.0.0.1:5000/upload_reflectance_data', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      responseType: 'blob'  // Expect the response to be a binary Blob
+
+    })
+    .then(response => {
+      const imageUrl = URL.createObjectURL(response.data);
+      setProcessedImage(imageUrl); // Set the processed image to be displayed
+      message.success('File uploaded and processed successfully');
+    })
+    .catch(error => {
+      message.error('Failed to process the file');
+      console.log("Error uploading file:", error.response ? error.response.data : error.message);
+
+    });
+  };
+
   return (
     <div>
       <Dropdown menu={{ items }} trigger={['click']}>
@@ -202,6 +228,20 @@ const Images = () => {
             <p><strong>N Concentration:</strong> {statisticalData.n_conc}</p>
             <p><strong>Chlorophyll A:</strong> {statisticalData.chlorophyll_a}</p>
             <p><strong>Date:</strong> {statisticalData.date}</p>
+            <Upload
+              customRequest={handleSpectralDataUpload} 
+              showUploadList={false}
+              accept=".asd,.sed" // Restrict file types to .asd and .sed
+            >
+              <Button icon={<UploadOutlined />}>Upload Reflectance Data</Button>
+            </Upload>
+
+            {processedImage && (
+              <div>
+                <h3>Spectral Data:</h3>
+                <img src={processedImage} alt="Processed" style={{ maxWidth: '100%' }} />
+              </div>
+            )}
           </div>
         ) : (
           <p>Loading data...</p>
